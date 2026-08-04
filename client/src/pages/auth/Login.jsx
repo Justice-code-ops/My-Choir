@@ -8,23 +8,37 @@ export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { register, handleSubmit, formState: { errors } } = useForm();
-  const { login } = useAuthStore();
+
+  const {
+    login,
+    user
+  } = useAuthStore();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm();
 
   useEffect(() => {
-    const user = useAuthStore((state) => state.user);
     if (user) {
-      navigate("/member/dashboard");
+      if (user.role === "admin" || user.role === "super-admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/member/dashboard");
+      }
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
   const onSubmit = async (data) => {
     setLoading(true);
     setError("");
     try {
-      await login(data.email, data.password);
-      const user = useAuthStore((state) => state.user);
-      if (user.role === "admin" || user.role === "super-admin") {
+      const result = await login(data.email, data.password);
+
+      const loggedInUser = result.data || result.user || result;
+
+      if (loggedInUser.role === "admin" || loggedInUser.role === "super-admin") {
         navigate("/admin/dashboard");
       } else {
         navigate("/member/dashboard");

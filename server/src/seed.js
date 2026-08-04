@@ -284,19 +284,15 @@ const seedDatabase = async () => {
       slug: "latest-choir-news",
       type: "blog",
       description: "Updates and news from the choir",
-      content: "## Welcome to the Choir Blog
-
-We're excited to share updates and stories...",
+      content: "## Welcome to the Choir Blog, We're excited to share updates and stories...",
       visibility: "public"
     }
   ]);
 
   console.log("✅ Created content items");
 
-  console.log("
-✨ Database seeding completed successfully!");
-  console.log("
-🔐 Demo Login Credentials:");
+  console.log("✨ Database seeding completed successfully!");
+  console.log("🔐 Demo Login Credentials:");
   console.log("   Admin: admin@voiceoflight.local / AdminPass123!");
   console.log("   Member: member@voiceoflight.local / MemberPass123!");
 
