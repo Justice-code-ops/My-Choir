@@ -8,9 +8,10 @@ const router = Router();
 
 router.use(authenticate);
 
-// Check in (any authenticated user)
+// Check in and attendance recording are admin-managed.
 router.post(
   "/check-in",
+  authorize(["admin", "super-admin"]),
   [
     body("memberId").notEmpty(),
     body("mode").optional().isIn(["qr", "code", "manual"]),
@@ -26,7 +27,10 @@ router.post(
   authorize(["admin", "super-admin"]),
   [
     body("memberId").notEmpty(),
-    body("status").isIn(["present", "late", "absent", "excused"])
+    body("status").isIn(["present", "late", "absent", "excused"]),
+    body("checkedInAt").optional().isISO8601(),
+    body("eventId").optional().isMongoId(),
+    body("notes").optional().trim().isLength({ max: 500 })
   ],
   validate,
   attendanceController.recordAttendance

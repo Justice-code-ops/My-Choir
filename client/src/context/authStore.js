@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { authAPI } from "./client.js";
+import { authAPI } from "../api/client.js";
 
 export const useAuthStore = create((set) => ({
   user: JSON.parse(localStorage.getItem("user") || "null"),

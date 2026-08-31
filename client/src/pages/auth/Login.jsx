@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { authAPI } from "../../api/client";
 import { useAuthStore } from "../../context/authStore";
 
 export default function Login() {
@@ -9,22 +8,22 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { register, handleSubmit, formState: { errors } } = useForm();
-  const { login } = useAuthStore();
+  const { login, user } = useAuthStore();
 
   useEffect(() => {
-    const user = useAuthStore((state) => state.user);
     if (user) {
-      navigate("/member/dashboard");
+      navigate(user.role === "admin" || user.role === "super-admin" ? "/admin/dashboard" : "/member/dashboard");
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
   const onSubmit = async (data) => {
     setLoading(true);
     setError("");
     try {
-      await login(data.email, data.password);
-      const user = useAuthStore((state) => state.user);
-      if (user.role === "admin" || user.role === "super-admin") {
+      const result = await login(data.email, data.password);
+      const loggedInUser = result.data;
+
+      if (loggedInUser.role === "admin" || loggedInUser.role === "super-admin") {
         navigate("/admin/dashboard");
       } else {
         navigate("/member/dashboard");
@@ -75,7 +74,7 @@ export default function Login() {
             {...register("password", { required: "Password is required" })}
             type="password"
             className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-dark-700 dark:text-white"
-            placeholder="••••••••"
+            placeholder="Password"
           />
           {errors.password && (
             <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
@@ -83,9 +82,9 @@ export default function Login() {
         </div>
 
         <div className="flex justify-between text-sm">
-          <a href="/auth/forgot-password" className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
+          <Link to="/auth/forgot-password" className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
             Forgot password?
-          </a>
+          </Link>
         </div>
 
         <button
@@ -98,22 +97,11 @@ export default function Login() {
       </form>
 
       <p className="text-center mt-6 text-gray-600 dark:text-gray-400">
-        Don't have an account?{" "}
-        <a href="/auth/register" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
+        Don&apos;t have an account?{" "}
+        <Link to="/auth/register" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
           Register here
-        </a>
+        </Link>
       </p>
-
-      {/* Demo Credentials */}
-      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg text-sm">
-        <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Demo Credentials:</p>
-        <p className="text-blue-800 dark:text-blue-200">
-          Admin: <code className="bg-white dark:bg-dark-700 px-2 py-1 rounded">admin@voiceoflight.local</code> / <code className="bg-white dark:bg-dark-700 px-2 py-1 rounded">AdminPass123!</code>
-        </p>
-        <p className="text-blue-800 dark:text-blue-200">
-          Member: <code className="bg-white dark:bg-dark-700 px-2 py-1 rounded">member@voiceoflight.local</code> / <code className="bg-white dark:bg-dark-700 px-2 py-1 rounded">MemberPass123!</code>
-        </p>
-      </div>
     </div>
   );
 }

@@ -27,6 +27,10 @@ export const getDashboard = asyncHandler(async (req, res) => {
     { $match: { status: "paid" } },
     { $group: { _id: null, total: { $sum: "$amount" } } }
   ]);
+  const outstandingPayments = await Payment.aggregate([
+    { $match: { status: "pending" } },
+    { $group: { _id: null, total: { $sum: "$amount" } } }
+  ]);
 
   // Attendance stats
   const todayStart = new Date();
@@ -34,6 +38,13 @@ export const getDashboard = asyncHandler(async (req, res) => {
   const todayAttendance = await Attendance.countDocuments({
     checkedInAt: { $gte: todayStart }
   });
+  const totalAttendance = await Attendance.countDocuments();
+  const attendedRecords = await Attendance.countDocuments({
+    status: { $in: ["present", "late"] }
+  });
+  const averageAttendance = totalAttendance > 0
+    ? Number(((attendedRecords / totalAttendance) * 100).toFixed(2))
+    : 0;
 
   // Voice distribution
   const voiceDistribution = await Member.aggregate([
@@ -59,7 +70,14 @@ export const getDashboard = asyncHandler(async (req, res) => {
       },
       voiceDistribution: Object.fromEntries(
         voiceDistribution.map((v) => [v._id, v.count])
-      )
+      ),
+      totalMembers,
+      approvedMembers: totalMembers,
+      pendingApprovals,
+      rejectedMembers,
+      outstandingPayments: outstandingPayments[0]?.total || 0,
+      monthlyRevenue: totalCollected[0]?.total || 0,
+      averageAttendance
     }
   });
 });

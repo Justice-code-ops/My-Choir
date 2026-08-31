@@ -3,25 +3,25 @@ import { User } from "../models/User.js";
 import { Notification } from "../models/Notification.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { signToken, verifyPasswordReset, generatePasswordResetToken } from "../utils/tokens.js";
+import { signToken, generatePasswordResetToken } from "../utils/tokens.js";
 import * as authService from "../services/authService.js";
-import * as auditService from "../services/auditService.js";
 import { recordAudit } from "../services/auditService.js";
+import { env } from "../config/env.js";
 
 export const register = asyncHandler(async (req, res) => {
-  const user = await authService.registerMember({
+  const { user, member } = await authService.registerMember({
     body: req.body,
     file: req.file
   });
 
   // Record audit
-  await recordAudit(req, "MEMBER_REGISTERED", "Member", user.member, {
+  await recordAudit(req, "MEMBER_REGISTERED", "Member", member._id, {
     email: user.email
   });
 
   // Create welcome notification
   await Notification.create({
-    recipient: user._id,
+    recipient: user.id,
     audience: "single",
     title: "Registration Received",
     message: "Your registration has been received. Please wait for admin approval.",
@@ -32,7 +32,8 @@ export const register = asyncHandler(async (req, res) => {
     success: true,
     message: "Registration successful. Please wait for admin approval.",
     data: {
-      userId: user._id,
+      userId: user.id,
+      memberId: member._id,
       email: user.email,
       status: user.status
     }
@@ -53,7 +54,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   if (user.status !== "approved") {
-    throw new ApiError(403, `Your account is ${user.status}. Please contact support.`);
+    throw new ApiError(403, `Your account is ${user.status}. Please wait for admin approval.`);
   }
 
   // Update last login
@@ -120,14 +121,17 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   user.passwordResetExpiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
   await user.save();
 
-  // TODO: Send email with reset link
-  // const resetUrl = `${env.clientUrl}/auth/reset-password?token=${resetToken}`;
-  // await sendEmail(user.email, 'Password Reset', resetUrl);
-
-  res.json({
+  const resetUrl = `${env.clientUrl}/auth/reset-password?token=${resetToken}`;
+  const response = {
     success: true,
     message: "If an account exists with that email, you will receive a password reset link."
-  });
+  };
+
+  if (env.nodeEnv !== "production") {
+    response.resetUrl = resetUrl;
+  }
+
+  res.json(response);
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { authAPI } from "../../api/client";
 import { Lock } from "lucide-react";
@@ -8,7 +8,7 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
-  
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
@@ -24,7 +24,7 @@ export default function ResetPassword() {
     setMessage("");
     try {
       await authAPI.resetPassword(token, data.password);
-      setMessage("Password reset successfully! Redirecting to login...");
+      setMessage("Password reset successfully. Redirecting to login...");
       setTimeout(() => navigate("/auth/login"), 2000);
     } catch (err) {
       setMessage(err.response?.data?.message || "Reset failed");
@@ -38,13 +38,15 @@ export default function ResetPassword() {
       <div className="bg-white dark:bg-dark-800 rounded-lg shadow-lg p-8 max-w-md mx-auto">
         <div className="text-center">
           <p className="text-red-600 dark:text-red-400 mb-4">Invalid reset link</p>
-          <a href="/auth/forgot-password" className="text-blue-600 hover:underline">
+          <Link to="/auth/forgot-password" className="text-blue-600 hover:underline">
             Request a new reset link
-          </a>
+          </Link>
         </div>
       </div>
     );
   }
+
+  const isSuccess = message.toLowerCase().includes("successfully");
 
   return (
     <div className="bg-white dark:bg-dark-800 rounded-lg shadow-lg p-8 max-w-md mx-auto">
@@ -56,7 +58,7 @@ export default function ResetPassword() {
 
       {message && (
         <div className={`mb-6 p-4 rounded-lg ${
-          message.includes("successfully")
+          isSuccess
             ? "bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-100"
             : "bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-100"
         }`}>
@@ -71,7 +73,7 @@ export default function ResetPassword() {
             {...register("password", { required: "Password is required", minLength: { value: 8, message: "Password must be 8+ characters" } })}
             type="password"
             className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-dark-700 dark:text-white"
-            placeholder="••••••••"
+            placeholder="New password"
           />
           {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
         </div>
@@ -82,7 +84,7 @@ export default function ResetPassword() {
             {...register("confirmPassword", { required: "Please confirm password", validate: (value) => value === password || "Passwords don't match" })}
             type="password"
             className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-dark-700 dark:text-white"
-            placeholder="••••••••"
+            placeholder="Confirm password"
           />
           {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
         </div>
@@ -97,9 +99,9 @@ export default function ResetPassword() {
       </form>
 
       <p className="text-center mt-6 text-gray-600 dark:text-gray-400">
-        <a href="/auth/login" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
+        <Link to="/auth/login" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
           Back to Login
-        </a>
+        </Link>
       </p>
     </div>
   );

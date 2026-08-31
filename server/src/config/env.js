@@ -24,11 +24,21 @@ export const env = {
   jwtCookieExpiresDays: toNumber(process.env.JWT_COOKIE_EXPIRES_DAYS, 7),
   bcryptRounds: toNumber(process.env.BCRYPT_ROUNDS, 12),
   monthlyDue: toNumber(process.env.MONTHLY_DUE, 500),
-  clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
-  publicAppUrl: process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || "http://localhost:5173",
-  corsOrigins: csv(process.env.CORS_ORIGINS, ["http://localhost:5173"]),
+  clientUrl: process.env.CLIENT_URL || "http://127.0.0.1:5173",
+  publicAppUrl: process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || "http://127.0.0.1:5173",
+  corsOrigins: csv(process.env.CORS_ORIGINS, [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+  ]),
   maxFileSizeMb: toNumber(process.env.MAX_FILE_SIZE_MB, 5),
   uploadDir: process.env.UPLOAD_DIR || "uploads",
+  organizationName: process.env.ORGANIZATION_NAME || "Voice of Light Chorale",
+  churchName: process.env.CHURCH_NAME || "Voice of Light Church",
+  organizationEmail: process.env.ORGANIZATION_EMAIL || "info@voiceoflight.local",
+  organizationPhone: process.env.ORGANIZATION_PHONE || "",
+  organizationLocation: process.env.ORGANIZATION_LOCATION || "",
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
@@ -57,4 +67,3 @@ export const validateEnv = () => {
     }
   }
 };
-

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { idCardAPI } from "../../api/client";
 import { CheckCircle, XCircle } from "lucide-react";
+import { formatDate, resolveAssetUrl } from "../../utils/format";
 
 export default function VerifyIDCard() {
   const { choirId } = useParams();
@@ -29,7 +30,7 @@ export default function VerifyIDCard() {
     verifyCard();
   }, [choirId]);
 
-  if (loading) return <div className="text-center py-12">Verifying ID...</div>;
+  if (loading) return <div className="text-center py-12 text-gray-600 dark:text-gray-300">Verifying ID...</div>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -40,10 +41,13 @@ export default function VerifyIDCard() {
           <div className="text-center mb-8">
             <CheckCircle className="mx-auto mb-4 text-green-500" size={48} />
             <h2 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">ID Card Valid</h2>
-            <p className="text-gray-600 dark:text-gray-400">This ID card has been verified and is valid.</p>
+            <p className="text-gray-600 dark:text-gray-400">This membership ID is active and verified.</p>
           </div>
 
           <div className="space-y-4 bg-gray-50 dark:bg-dark-700 p-6 rounded-lg">
+            {card.photo && (
+              <img src={resolveAssetUrl(card.photo)} alt={card.name} className="w-24 h-24 rounded-lg object-cover mx-auto" />
+            )}
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Member Name</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.name}</p>
@@ -53,16 +57,16 @@ export default function VerifyIDCard() {
               <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.choirId}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400\">Voice Part</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white\">{card.voicePart}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Voice Part</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.voicePart}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Valid Until</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">{new Date(card.expiryDate).toLocaleDateString()}</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatDate(card.expiryDate)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
-              <p className="text-lg font-semibold text-green-600 dark:text-green-400">Active</p>
+              <p className="text-lg font-semibold text-green-600 dark:text-green-400 capitalize">{card.status}</p>
             </div>
           </div>
         </div>

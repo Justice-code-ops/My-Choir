@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { publicAPI } from "../../api/client";
 import { Users, Target, Heart } from "lucide-react";
+import { resolveAssetUrl } from "../../utils/format";
 
 export default function About() {
   const [executives, setExecutives] = useState([]);
@@ -11,8 +12,8 @@ export default function About() {
       try {
         const res = await publicAPI.getExecutives();
         setExecutives(res.data?.data || []);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        setExecutives([]);
       } finally {
         setLoading(false);
       }
@@ -72,12 +73,14 @@ export default function About() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {executives.map((exec) => (
                 <div key={exec._id} className="bg-white dark:bg-dark-800 rounded-lg shadow p-6 text-center">
-                  {exec.image && (
-                    <img src={exec.image} alt={exec.name} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
+                  {resolveAssetUrl(exec.image?.url) && (
+                    <img src={resolveAssetUrl(exec.image.url)} alt={exec.name} className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
                   )}
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{exec.name}</h3>
                   <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">{exec.position}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{exec.description}</p>
+                  {(exec.summary || exec.biography) && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{exec.summary || exec.biography}</p>
+                  )}
                 </div>
               ))}
             </div>

@@ -10,26 +10,37 @@ import { storeProfilePicture } from "./uploadService.js";
 
 export const serializeUser = (user) => ({
   id: user._id,
+  _id: user._id,
   email: user.email,
   role: user.role,
   status: user.status,
-  member: user.member || null
+  userId: user._id,
+  memberId: user.member?._id,
+  member: user.member || null,
+  fullName: user.member?.fullName,
+  phone: user.member?.phone,
+  gender: user.member?.gender,
+  voicePart: user.member?.voicePart,
+  choirId: user.member?.choirId,
+  createdAt: user.member?.createdAt || user.createdAt
 });
 
 const buildMemberPayload = async (body, file, userId) => {
   const profilePicture = await storeProfilePicture(file);
+  const fullName = body.fullName || [body.firstName, body.lastName].filter(Boolean).join(" ");
+
   return {
     user: userId,
-    fullName: body.fullName,
+    fullName,
     gender: body.gender,
-    dob: body.dob || undefined,
+    dob: body.dob || body.dateOfBirth || undefined,
     phone: body.phone,
     email: body.email,
     address: body.address,
     occupation: body.occupation,
     nextOfKin: {
-      name: body.nextOfKinName,
-      phone: body.nextOfKinPhone,
+      name: body.nextOfKinName || body.nokName,
+      phone: body.nextOfKinPhone || body.nokPhone,
       relationship: body.nextOfKinRelationship
     },
     previousChoirExperience: body.previousChoirExperience,
@@ -49,7 +60,7 @@ export const registerMember = async ({ body, file }) => {
 
   const passwordHash = await bcrypt.hash(body.password, env.bcryptRounds);
   const user = await User.create({
-    email: body.email,
+    email: body.email.toLowerCase(),
     passwordHash,
     role: ROLES.MEMBER,
     status: MEMBER_STATUSES.PENDING
@@ -104,4 +115,3 @@ export const changeUserPassword = async (userId, currentPassword, nextPassword) 
 export const hashPassword = async (password) => {
   return bcrypt.hash(password, env.bcryptRounds);
 };
-

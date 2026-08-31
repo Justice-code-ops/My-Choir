@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { authAPI } from "../../api/client";
 import { useAuthStore } from "../../context/authStore";
@@ -23,8 +23,18 @@ export default function Register() {
     setError("");
     setSuccess("");
     try {
-      await authAPI.register(data, profilePicture);
-      setSuccess("Registration successful! You can now log in.");
+      const payload = {
+        ...data,
+        fullName: `${data.firstName} ${data.lastName}`.trim(),
+        dob: data.dateOfBirth,
+        nextOfKinName: data.nokName,
+        nextOfKinPhone: data.nokPhone
+      };
+
+      delete payload.confirmPassword;
+
+      await authAPI.register(payload, profilePicture);
+      setSuccess("Registration successful. Please wait for admin approval before logging in.");
       setTimeout(() => navigate("/auth/login"), 2000);
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
@@ -110,7 +120,7 @@ export default function Register() {
           {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
         </div>
 
-        {/* Demographic Information */}
+        {/* Personal Information */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gender</label>
@@ -139,9 +149,10 @@ export default function Register() {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
           <input
-            {...register("address")}
+            {...register("address", { required: "Address is required" })}
             className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-700 dark:text-white"
           />
+          {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -238,9 +249,9 @@ export default function Register() {
 
       <p className="text-center mt-6 text-gray-600 dark:text-gray-400">
         Already have an account?{" "}
-        <a href="/auth/login" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
+        <Link to="/auth/login" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
           Login here
-        </a>
+        </Link>
       </p>
     </div>
   );

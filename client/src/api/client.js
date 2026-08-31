@@ -20,7 +20,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthPage = window.location.pathname.startsWith("/auth/");
+    const isLoginRequest = error.config?.url?.includes("/auth/login");
+
+    if (error.response?.status === 401 && !isLoginRequest && !isAuthPage) {
       // Clear auth and redirect to login
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -54,13 +57,41 @@ export const memberAPI = {
   getMemberById: (id) => api.get(`/members/${id}`),
   listMembers: (params) => api.get("/members", { params }),
   searchMembers: (q, limit) => api.get("/members/search/query", { params: { q, limit } }),
-  updateMember: (id, data) => api.put(`/members/${id}`, data),
-  getMemberStats: (id) => api.get(`/members/${id}/stats`)
+  updateMember: (id, data, file) => {
+    if (!file) return api.put(`/members/${id}`, data);
+
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
+    formData.append("profilePicture", file);
+    return api.put(`/members/${id}`, formData);
+  },
+  updateProfile: (data, file) => {
+    if (!file) return api.put("/members/profile", data);
+
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
+    formData.append("profilePicture", file);
+    return api.put("/members/profile", formData);
+  },
+  deleteMember: (id) => api.delete(`/members/${id}`),
+  getMemberStats: (id) => api.get(`/members/${id}/stats`),
+  getStats: (id) => api.get(`/members/${id}/stats`)
 };
 
 // Payment endpoints
 export const paymentAPI = {
   recordPayment: (data) => api.post("/payments", data),
+  getMySummary: () => api.get("/payments/me/summary"),
+  getMyHistory: (params) => api.get("/payments/me/history", { params }),
+  simulatePayment: (data) => api.post("/payments/me/simulate", data),
   listPayments: (params) => api.get("/payments", { params }),
   getPaymentHistory: (memberId, params) => api.get(`/payments/${memberId}/history`, { params }),
   getMemberBalance: (memberId) => api.get(`/payments/${memberId}/balance`),
@@ -74,15 +105,20 @@ export const attendanceAPI = {
   recordAttendance: (data) => api.post("/attendance/record", data),
   getAttendanceHistory: (memberId, params) => api.get(`/attendance/${memberId}/history`, { params }),
   getAttendanceStats: (memberId, params) => api.get(`/attendance/${memberId}/stats`, { params }),
-  generateReport: (params) => api.get("/attendance/report", { params })
+  getStats: (memberId, params) => api.get(`/attendance/${memberId}/stats`, { params }),
+  generateReport: (params) => api.get("/attendance/report", { params }),
+  getReport: (params) => api.get("/attendance/report", { params })
 };
 
 // Approval endpoints
 export const approvalAPI = {
   getPendingApprovals: (params) => api.get("/approvals", { params }),
+  getPending: (params) => api.get("/approvals", { params }),
   approveMember: (id, data) => api.post(`/approvals/${id}/approve`, data),
   rejectMember: (id, data) => api.post(`/approvals/${id}/reject`, data),
-  requestCorrection: (id, data) => api.post(`/approvals/${id}/correct`, data),
+  requestCorrection: (id, data) => api.post(`/approvals/${id}/correct`, {
+    requiredCorrections: data?.requiredCorrections || data?.reason || data
+  }),
   getStats: () => api.get("/approvals/stats")
 };
 
@@ -108,7 +144,7 @@ export const notificationAPI = {
 export const idCardAPI = {
   getMyCard: () => api.get("/id-card/my-card"),
   generateCard: (memberId) => api.get(`/id-card/${memberId}/generate`),
-  downloadCard: (memberId) => api.get(`/id-card/${memberId}/download`, { responseType: "blob" }),
+  downloadCard: (memberId) => api.get(`/id-card/${memberId}/download`),
   verifyCard: (choirId) => api.get(`/id-card/verify/${choirId}`)
 };
 

@@ -11,6 +11,14 @@ const generateAttendanceCode = () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
+const canManageAttendance = (user) => ["admin", "super-admin"].includes(user.role);
+
+const assertCanAccessMember = (req, member) => {
+  if (canManageAttendance(req.user)) return;
+  if (req.user._id.toString() === member.user.toString()) return;
+  throw new ApiError(403, "You do not have permission to access this attendance record");
+};
+
 export const checkIn = asyncHandler(async (req, res) => {
   const { memberId, eventId, code, mode = "manual" } = req.body;
 
@@ -22,6 +30,8 @@ export const checkIn = asyncHandler(async (req, res) => {
   if (!member) {
     throw new ApiError(404, "Member not found");
   }
+
+  assertCanAccessMember(req, member);
 
   // If mode is "code", verify attendance code
   if (mode === "code" && code) {
@@ -89,6 +99,13 @@ export const getAttendanceHistory = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
   const { status, month, year } = req.query;
 
+  const member = await Member.findById(memberId);
+  if (!member) {
+    throw new ApiError(404, "Member not found");
+  }
+
+  assertCanAccessMember(req, member);
+
   const filter = { member: memberId };
 
   if (status) {
@@ -124,6 +141,13 @@ export const getAttendanceHistory = asyncHandler(async (req, res) => {
 export const getAttendanceStats = asyncHandler(async (req, res) => {
   const { memberId } = req.params;
   const { year } = req.query;
+
+  const member = await Member.findById(memberId);
+  if (!member) {
+    throw new ApiError(404, "Member not found");
+  }
+
+  assertCanAccessMember(req, member);
 
   const filter = { member: memberId };
 
@@ -209,7 +233,7 @@ export const generateAttendanceReport = asyncHandler(async (req, res) => {
 });
 
 export const recordAttendance = asyncHandler(async (req, res) => {
-  const { memberId, status, notes } = req.body;
+  const { memberId, eventId, status, notes, checkedInAt } = req.body;
 
   if (!memberId || !status) {
     throw new ApiError(400, "memberId and status are required");
@@ -220,14 +244,43 @@ export const recordAttendance = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Member not found");
   }
 
-  const attendance = await Attendance.create({
-    member: memberId,
+  const attendanceDate = checkedInAt ? new Date(checkedInAt) : new Date();
+  if (Number.isNaN(attendanceDate.getTime())) {
+    throw new ApiError(400, "checkedInAt must be a valid date");
+  }
+
+  const payload = {
     status,
-    checkedInAt: new Date(),
+    checkedInAt: attendanceDate,
     mode: "manual",
     recordedBy: req.user._id,
     notes
-  });
+  };
+
+  let attendance;
+  if (eventId) {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      throw new ApiError(404, "Event not found");
+    }
+
+    attendance = await Attendance.findOneAndUpdate(
+      { member: memberId, event: eventId },
+      {
+        ...payload,
+        member: memberId,
+        event: eventId,
+        expectedAt: event.startsAt,
+        minutesLate: status === "late" ? Math.max(Math.floor((attendanceDate - event.startsAt) / (1000 * 60)), 0) : 0
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+  } else {
+    attendance = await Attendance.create({
+      member: memberId,
+      ...payload
+    });
+  }
 
   // Record audit
   await recordAudit(req, "ATTENDANCE_RECORDED_MANUAL", "Attendance", attendance._id, {
@@ -237,7 +290,7 @@ export const recordAttendance = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    message: "Attendance recorded",
+    message: eventId ? "Attendance saved for the selected event" : "Attendance recorded",
     data: attendance
   });
 });

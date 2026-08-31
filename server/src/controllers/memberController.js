@@ -7,6 +7,16 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { getPagination } from "../utils/pagination.js";
 import { getDueMonths, calculateBalance } from "../services/paymentService.js";
 import { recordAudit } from "../services/auditService.js";
+import { storeProfilePicture } from "../services/uploadService.js";
+import { parseBoolean } from "../utils/formatters.js";
+
+const canManageMembers = (user) => ["admin", "super-admin"].includes(user.role);
+
+const assertCanAccessMember = (req, member) => {
+  if (canManageMembers(req.user)) return;
+  if (req.user._id.toString() === member.user.toString()) return;
+  throw new ApiError(403, "Unauthorized");
+};
 
 export const getProfile = asyncHandler(async (req, res) => {
   const member = await Member.findOne({ user: req.user._id }).populate("user");
@@ -85,37 +95,82 @@ export const searchMembers = asyncHandler(async (req, res) => {
 });
 
 export const updateMember = asyncHandler(async (req, res) => {
-  const member = await Member.findById(req.params.id);
+  const member = req.params.id
+    ? await Member.findById(req.params.id)
+    : await Member.findOne({ user: req.user._id });
+
   if (!member) {
     throw new ApiError(404, "Member not found");
   }
 
-  // Only admin or the member themselves can update
-  if (req.user.role !== "admin" && req.user.role !== "super-admin" && req.user._id.toString() !== member.user.toString()) {
-    throw new ApiError(403, "Unauthorized");
-  }
+  assertCanAccessMember(req, member);
 
   const allowedFields = [
+    "fullName",
+    "gender",
+    "dob",
     "phone",
     "address",
     "occupation",
     "nextOfKin",
+    "previousChoirExperience",
+    "voicePart",
     "instrument",
+    "baptized",
+    "confirmed",
     "emergencyNotes",
     "dateJoinedChurch"
   ];
 
-  Object.keys(req.body).forEach((key) => {
-    if (allowedFields.includes(key)) {
-      member[key] = req.body[key];
+  const requiredStringFields = ["fullName", "gender", "phone", "address", "voicePart"];
+
+  requiredStringFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(req.body, field) && !String(req.body[field] || "").trim()) {
+      throw new ApiError(400, `${field} cannot be empty`);
     }
   });
+
+  if (req.body.nextOfKinName || req.body.nextOfKinPhone || req.body.nextOfKinRelationship) {
+    member.nextOfKin = {
+      name: req.body.nextOfKinName || member.nextOfKin?.name,
+      phone: req.body.nextOfKinPhone || member.nextOfKin?.phone,
+      relationship: req.body.nextOfKinRelationship || member.nextOfKin?.relationship
+    };
+  }
+
+  allowedFields.forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(req.body, key)) return;
+
+    if (key === "nextOfKin") {
+      member.nextOfKin = req.body.nextOfKin;
+      return;
+    }
+
+    if (["baptized", "confirmed"].includes(key)) {
+      member[key] = parseBoolean(req.body[key]);
+      return;
+    }
+
+    if (["dob", "dateJoinedChurch"].includes(key)) {
+      member[key] = req.body[key] ? new Date(req.body[key]) : undefined;
+      return;
+    }
+
+    member[key] = typeof req.body[key] === "string" ? req.body[key].trim() : req.body[key];
+  });
+
+  if (req.file) {
+    member.profilePicture = await storeProfilePicture(req.file);
+  }
 
   await member.save();
 
   // Record audit
   await recordAudit(req, "MEMBER_UPDATED", "Member", member._id, {
-    fields: Object.keys(req.body).filter((k) => allowedFields.includes(k))
+    fields: [
+      ...Object.keys(req.body).filter((k) => allowedFields.includes(k) || k.startsWith("nextOfKin")),
+      ...(req.file ? ["profilePicture"] : [])
+    ]
   });
 
   res.json({
@@ -130,6 +185,8 @@ export const getMemberStats = asyncHandler(async (req, res) => {
   if (!member) {
     throw new ApiError(404, "Member not found");
   }
+
+  assertCanAccessMember(req, member);
 
   // Get payment stats
   const dueMonths = getDueMonths(member);

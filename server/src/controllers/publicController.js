@@ -2,10 +2,12 @@ import { Event } from "../models/Event.js";
 import { ContentItem } from "../models/ContentItem.js";
 import { ContactMessage } from "../models/ContactMessage.js";
 import { Member } from "../models/Member.js";
+import { OrganizationItem } from "../models/OrganizationItem.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { getPagination } from "../utils/pagination.js";
 import { recordAudit } from "../services/auditService.js";
+import { env } from "../config/env.js";
 
 export const getEvents = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
@@ -152,11 +154,10 @@ export const getAnnouncements = asyncHandler(async (req, res) => {
 });
 
 export const getExecutives = asyncHandler(async (req, res) => {
-  // This should ideally come from a model, but for now we'll return a static structure
-  const executives = await ContentItem.find({
+  const executives = await OrganizationItem.find({
     type: "executive",
-    visibility: "public"
-  }).sort({ createdAt: 1 });
+    active: true
+  }).sort({ order: 1, createdAt: 1 });
 
   res.json({
     success: true,
@@ -193,19 +194,18 @@ export const submitContact = asyncHandler(async (req, res) => {
 });
 
 export const getChurchInfo = asyncHandler(async (_req, res) => {
-  // Static church info endpoint
   const info = {
-    name: "Voice of Light Chorale",
-    tagline: "Your Voice, Our Harmony",
-    description: "A vibrant choir dedicated to bringing joy through music and service.",
-    location: "Church Address",
-    phone: "+234 XXX XXX XXXX",
-    email: "info@voiceoflight.local",
+    name: env.organizationName,
+    tagline: process.env.ORGANIZATION_TAGLINE || "",
+    description: process.env.ORGANIZATION_DESCRIPTION || "",
+    location: env.organizationLocation,
+    phone: env.organizationPhone,
+    email: env.organizationEmail,
     socialMedia: {
-      facebook: "",
-      instagram: "",
-      youtube: "",
-      twitter: ""
+      facebook: process.env.ORGANIZATION_FACEBOOK || "",
+      instagram: process.env.ORGANIZATION_INSTAGRAM || "",
+      youtube: process.env.ORGANIZATION_YOUTUBE || "",
+      twitter: process.env.ORGANIZATION_TWITTER || ""
     }
   };
 

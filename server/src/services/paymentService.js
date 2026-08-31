@@ -2,6 +2,8 @@ import { env } from "../config/env.js";
 import { Payment } from "../models/Payment.js";
 import { generateReceiptNumber } from "../utils/idGenerator.js";
 
+export { generateReceiptNumber };
+
 const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 
 export const getDueMonths = (member, throughDate = new Date()) => {
@@ -56,4 +58,3 @@ export const calculateBalance = async (member) => {
   const summary = await calculatePaymentSummary(member);
   return summary.outstandingTotal;
 };
-

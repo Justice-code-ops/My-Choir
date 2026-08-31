@@ -19,6 +19,7 @@ export default function AdminApprovals() {
     try {
       const res = await approvalAPI.getPending();
       setApprovals(res.data?.data || []);
+      setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load approvals");
     } finally {
@@ -33,7 +34,13 @@ export default function AdminApprovals() {
   };
 
   const submitAction = async () => {
+    if ((action === "reject" || action === "correct") && !reason.trim()) {
+      setError("Please enter a reason before submitting this action.");
+      return;
+    }
+
     setProcessing(true);
+    setError("");
     try {
       if (action === "approve") {
         await approvalAPI.approveMember(selectedId);
@@ -47,7 +54,7 @@ export default function AdminApprovals() {
       setAction(null);
       setReason("");
     } catch (err) {
-      alert(err.response?.data?.message || "Action failed");
+      setError(err.response?.data?.message || "Action failed");
     } finally {
       setProcessing(false);
     }
@@ -75,7 +82,7 @@ export default function AdminApprovals() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                 <div>
                   <p className="text-gray-600 dark:text-gray-400 text-sm">Name</p>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{member.firstName} {member.lastName}</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{member.fullName}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 dark:text-gray-400 text-sm">Email</p>
@@ -88,7 +95,71 @@ export default function AdminApprovals() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
-                <div>\n                  <p className=\"text-gray-600 dark:text-gray-400\">Phone: {member.phone}</p>\n                  <p className=\"text-gray-600 dark:text-gray-400\">Gender: {member.gender}</p>\n                </div>\n                <div>\n                  <p className=\"text-gray-600 dark:text-gray-400\">Registered: {new Date(member.createdAt).toLocaleDateString()}</p>\n                  <p className=\"text-gray-600 dark:text-gray-400\">Status: <span className=\"font-semibold capitalize\">{member.status}</span></p>\n                </div>\n              </div>
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">Phone: {member.phone}</p>
+                  <p className="text-gray-600 dark:text-gray-400">Gender: {member.gender}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 dark:text-gray-400">Registered: {new Date(member.createdAt).toLocaleDateString()}</p>
+                  <p className="text-gray-600 dark:text-gray-400">Status: <span className="font-semibold capitalize">{member.status}</span></p>
+                </div>
+              </div>
 
               {selectedId === member._id && action ? (
-                <div className=\"bg-gray-50 dark:bg-dark-700 p-4 rounded mb-4\">\n                  {(action === \"reject\" || action === \"correct\") && (\n                    <div className=\"mb-4\">\n                      <label className=\"block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2\">Reason</label>\n                      <textarea\n                        value={reason}\n                        onChange={(e) => setReason(e.target.value)}\n                        className=\"w-full px-3 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-600 dark:text-white\"\n                        rows=\"3\"\n                      />\n                    </div>\n                  )}\n                  <div className=\"flex gap-2\">\n                    <button\n                      onClick={submitAction}\n                      disabled={processing}\n                      className=\"px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50\"\n                    >\n                      {processing ? \"Processing...\" : \"Confirm\"}\n                    </button>\n                    <button\n                      onClick={() => { setSelectedId(null); setAction(null); }}\n                      className=\"px-4 py-2 bg-gray-300 dark:bg-dark-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-dark-500\"\n                    >\n                      Cancel\n                    </button>\n                  </div>\n                </div>\n              ) : (\n                <div className=\"flex flex-wrap gap-2\">\n                  <button\n                    onClick={() => handleAction(member._id, \"approve\")}\n                    className=\"flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700\"\n                  >\n                    <CheckCircle size={18} /> Approve\n                  </button>\n                  <button\n                    onClick={() => handleAction(member._id, \"reject\")}\n                    className=\"flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700\"\n                  >\n                    <XCircle size={18} /> Reject\n                  </button>\n                  <button\n                    onClick={() => handleAction(member._id, \"correct\")}\n                    className=\"flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700\"\n                  >\n                    <AlertCircle size={18} /> Request Correction\n                  </button>\n                </div>\n              )}\n            </div>\n          ))}\n        </div>\n      )}\n    </div>\n  );\n}
+                <div className="bg-gray-50 dark:bg-dark-700 p-4 rounded mb-4">
+                  {(action === "reject" || action === "correct") && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reason</label>
+                      <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-600 dark:text-white"
+                        rows="3"
+                      />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={submitAction}
+                      disabled={processing}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {processing ? "Processing..." : "Confirm"}
+                    </button>
+                    <button
+                      onClick={() => { setSelectedId(null); setAction(null); }}
+                      className="px-4 py-2 bg-gray-300 dark:bg-dark-600 text-gray-800 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-dark-500"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleAction(member._id, "approve")}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    <CheckCircle size={18} /> Approve
+                  </button>
+                  <button
+                    onClick={() => handleAction(member._id, "reject")}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    <XCircle size={18} /> Reject
+                  </button>
+                  <button
+                    onClick={() => handleAction(member._id, "correct")}
+                    className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                  >
+                    <AlertCircle size={18} /> Request Correction
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

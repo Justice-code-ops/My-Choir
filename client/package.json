@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext .js,.jsx"
+    "lint": "node scripts/check-source.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

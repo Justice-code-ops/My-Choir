@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { publicAPI } from "../../api/client";
 import { Link } from "react-router-dom";
 import { Music, Calendar, Users, Award } from "lucide-react";
+import { publicAPI } from "../../api/client";
+import { formatDate } from "../../utils/format";
+
+const excerpt = (item) => item.summary || item.body?.slice(0, 150) || "";
 
 export default function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
@@ -17,8 +20,9 @@ export default function Home() {
         ]);
         setUpcomingEvents(eventsRes.data?.data?.slice(0, 3) || []);
         setAnnouncements(announcementsRes.data?.data?.slice(0, 3) || []);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        setUpcomingEvents([]);
+        setAnnouncements([]);
       } finally {
         setLoading(false);
       }
@@ -28,7 +32,6 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -46,7 +49,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
           <div className="text-center">
@@ -71,7 +73,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Upcoming Events */}
         {!loading && upcomingEvents.length > 0 && (
           <div className="mb-20">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Upcoming Events</h2>
@@ -81,7 +82,7 @@ export default function Home() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{event.title}</h3>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">{event.description}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-500">
-                    {new Date(event.eventDate).toLocaleDateString()} at {event.location}
+                    {formatDate(event.startsAt)}{event.location ? ` at ${event.location}` : ""}
                   </p>
                 </div>
               ))}
@@ -94,7 +95,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Announcements */}
         {!loading && announcements.length > 0 && (
           <div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Latest News</h2>
@@ -102,8 +102,10 @@ export default function Home() {
               {announcements.map((announcement) => (
                 <div key={announcement._id} className="bg-white dark:bg-dark-800 rounded-lg shadow p-6 border-l-4 border-blue-600">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{announcement.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-3">{announcement.content?.substring(0, 150)}...</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">{new Date(announcement.createdAt).toLocaleDateString()}</p>
+                  {excerpt(announcement) && (
+                    <p className="text-gray-600 dark:text-gray-400 mb-3">{excerpt(announcement)}</p>
+                  )}
+                  <p className="text-sm text-gray-500 dark:text-gray-500">{formatDate(announcement.publishedAt || announcement.createdAt)}</p>
                 </div>
               ))}
             </div>

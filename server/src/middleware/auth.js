@@ -38,9 +38,10 @@ export const requireApproved = (req, _res, next) => {
 };
 
 export const authorize = (...roles) => (req, _res, next) => {
-  if (!roles.includes(req.user.role)) {
+  const allowedRoles = roles.flat();
+
+  if (!allowedRoles.includes(req.user.role)) {
     return next(new ApiError(403, "You do not have permission to perform this action"));
   }
   next();
 };
-

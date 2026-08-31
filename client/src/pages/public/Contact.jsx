@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { publicAPI } from "../../api/client";
 import { Mail, Phone, MapPin } from "lucide-react";
@@ -6,14 +6,27 @@ import { Mail, Phone, MapPin } from "lucide-react";
 export default function Contact() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [churchInfo, setChurchInfo] = useState(null);
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
+
+  useEffect(() => {
+    const loadInfo = async () => {
+      try {
+        const res = await publicAPI.getChurchInfo();
+        setChurchInfo(res.data?.data);
+      } catch {
+        setChurchInfo(null);
+      }
+    };
+    loadInfo();
+  }, []);
 
   const onSubmit = async (data) => {
     setLoading(true);
     setMessage("");
     try {
       await publicAPI.submitContact(data);
-      setMessage("Message sent successfully! We'll get back to you soon.");
+      setMessage("Message sent successfully. We will get back to you soon.");
       reset();
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
@@ -28,35 +41,44 @@ export default function Contact() {
       <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-12">Contact Us</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        {/* Contact Info */}
         <div>
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-8">Get in Touch</h2>
           <div className="space-y-6">
-            <div className="flex gap-4">
-              <Mail className="text-blue-600 flex-shrink-0" size={24} />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Email</h3>
-                <p className="text-gray-600 dark:text-gray-400">info@voiceoflight.church</p>
+            {churchInfo?.email && (
+              <div className="flex gap-4">
+                <Mail className="text-blue-600 flex-shrink-0" size={24} />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Email</h3>
+                  <p className="text-gray-600 dark:text-gray-400">{churchInfo.email}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-4">
-              <Phone className="text-blue-600 flex-shrink-0" size={24} />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Phone</h3>
-                <p className="text-gray-600 dark:text-gray-400">+234 (0) 123 456 7890</p>
+            )}
+            {churchInfo?.phone && (
+              <div className="flex gap-4">
+                <Phone className="text-blue-600 flex-shrink-0" size={24} />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Phone</h3>
+                  <p className="text-gray-600 dark:text-gray-400">{churchInfo.phone}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-4">
-              <MapPin className="text-blue-600 flex-shrink-0" size={24} />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Location</h3>
-                <p className="text-gray-600 dark:text-gray-400\">123 Church Street, City, Nigeria</p>
+            )}
+            {churchInfo?.location && (
+              <div className="flex gap-4">
+                <MapPin className="text-blue-600 flex-shrink-0" size={24} />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Location</h3>
+                  <p className="text-gray-600 dark:text-gray-400">{churchInfo.location}</p>
+                </div>
               </div>
-            </div>
+            )}
+            {!churchInfo?.email && !churchInfo?.phone && !churchInfo?.location && (
+              <p className="text-gray-600 dark:text-gray-400">
+                Send a message through the form and the choir administration team will respond.
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Contact Form */}
         <div className="bg-white dark:bg-dark-800 rounded-lg shadow p-8">
           {message && (
             <div className={`mb-6 p-4 rounded-lg ${
@@ -97,12 +119,21 @@ export default function Contact() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
+              <input
+                {...register("subject", { required: "Subject is required" })}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-700 dark:text-white"
+              />
+              {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject.message}</p>}
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
               <textarea
                 {...register("message", { required: "Message is required" })}
                 rows="5"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-700 dark:text-white"
-              ></textarea>
+              />
               {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message.message}</p>}
             </div>
 

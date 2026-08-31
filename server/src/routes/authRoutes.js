@@ -11,11 +11,13 @@ const router = Router();
 const registerRules = [
   body("email").isEmail().normalizeEmail(),
   body("password").isLength({ min: 8 }).withMessage("Password must be at least 8 characters"),
-  body("fullName").trim().notEmpty(),
-  body("phone").trim().notEmpty(),
+  body("fullName")
+    .custom((value, { req }) => Boolean(value?.trim() || (req.body.firstName?.trim() && req.body.lastName?.trim())))
+    .withMessage("Full name is required"),
+  body("phone").trim().notEmpty().withMessage("Phone is required"),
   body("gender").isIn(["Male", "Female", "Other", "Prefer not to say"]),
   body("voicePart").isIn(["Soprano", "Alto", "Tenor", "Bass", "Instrumentalist"]),
-  body("address").trim().notEmpty()
+  body("address").trim().notEmpty().withMessage("Address is required")
 ];
 
 const loginRules = [
@@ -24,8 +26,8 @@ const loginRules = [
 ];
 
 // Public routes
-router.post("/register", uploadProfilePicture.single("profilePicture"), validate(registerRules), authController.register);
-router.post("/login", validate(loginRules), authController.login);
+router.post("/register", uploadProfilePicture.single("profilePicture"), registerRules, validate, authController.register);
+router.post("/login", loginRules, validate, authController.login);
 router.post("/forgot-password", [body("email").isEmail()], validate, authController.forgotPassword);
 router.post("/reset-password", [body("token").notEmpty(), body("password").isLength({ min: 8 })], validate, authController.resetPassword);
 

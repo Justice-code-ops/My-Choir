@@ -1,21 +1,25 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 import { authAPI } from "../../api/client";
 import { Mail } from "lucide-react";
 
 export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [resetUrl, setResetUrl] = useState("");
   const [success, setSuccess] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data) => {
     setLoading(true);
     setMessage("");
+    setResetUrl("");
     try {
-      await authAPI.forgotPassword(data.email);
+      const res = await authAPI.forgotPassword(data.email);
       setSuccess(true);
-      setMessage("Password reset link sent to your email. Please check your inbox.");
+      setMessage(res.data?.message || "If an account exists with that email, you will receive a password reset link.");
+      setResetUrl(res.data?.resetUrl || "");
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to send reset link");
     } finally {
@@ -38,6 +42,11 @@ export default function ForgotPassword() {
             : "bg-red-50 dark:bg-red-900 text-red-700 dark:text-red-100"
         }`}>
           {message}
+          {resetUrl && (
+            <a href={resetUrl} className="block mt-3 font-medium underline">
+              Open development reset link
+            </a>
+          )}
         </div>
       )}
 
@@ -64,17 +73,17 @@ export default function ForgotPassword() {
         </form>
       ) : (
         <div className="text-center">
-          <a href="/auth/login" className="text-blue-600 dark:text-blue-400 hover:underline">
+          <Link to="/auth/login" className="text-blue-600 dark:text-blue-400 hover:underline">
             Back to Login
-          </a>
+          </Link>
         </div>
       )}
 
       <p className="text-center mt-6 text-gray-600 dark:text-gray-400">
         Remember your password?{" "}
-        <a href="/auth/login" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
+        <Link to="/auth/login" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
           Login here
-        </a>
+        </Link>
       </p>
     </div>
   );

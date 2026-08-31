@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { connectDB } from "./config/db.js";
 import { env } from "./config/env.js";
 import { User } from "./models/User.js";
@@ -8,16 +9,19 @@ import { Payment } from "./models/Payment.js";
 import { Attendance } from "./models/Attendance.js";
 import { Notification } from "./models/Notification.js";
 import { ContentItem } from "./models/ContentItem.js";
+import { OrganizationItem } from "./models/OrganizationItem.js";
 import { MEMBER_STATUSES, ROLES, VOICE_PARTS } from "./constants/index.js";
-import bcrypt from "bcryptjs";
 import { generateChoirId } from "./utils/idGenerator.js";
+import { generateReceiptNumber } from "./services/paymentService.js";
 
-const seedDatabase = async () => {
-  await connectDB();
+const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@voiceoflight.org";
+const adminPassword = process.env.SEED_ADMIN_PASSWORD || "AdminPass123!";
+const memberEmail = process.env.SEED_MEMBER_EMAIL || "member@voiceoflight.org";
+const memberPassword = process.env.SEED_MEMBER_PASSWORD || "MemberPass123!";
 
-  console.log("🌱 Seeding database...");
+const log = (message) => process.stdout.write(`${message}\n`);
 
-  // Clear existing data
+const resetCollections = async () => {
   await Promise.all([
     User.deleteMany({}),
     Member.deleteMany({}),
@@ -25,59 +29,87 @@ const seedDatabase = async () => {
     Payment.deleteMany({}),
     Attendance.deleteMany({}),
     Notification.deleteMany({}),
-    ContentItem.deleteMany({})
+    ContentItem.deleteMany({}),
+    OrganizationItem.deleteMany({})
   ]);
+};
 
-  console.log("🧹 Cleared existing data");
+const createUser = async ({ email, password, role, status, lastLoginAt }) => {
+  const passwordHash = await bcrypt.hash(password, env.bcryptRounds);
+  return User.create({
+    email,
+    passwordHash,
+    role,
+    status,
+    lastLoginAt
+  });
+};
 
-  // Create admin user
-  const adminPasswordHash = await bcrypt.hash("AdminPass123!", env.bcryptRounds);
-  const adminUser = await User.create({
-    email: "admin@voiceoflight.local",
-    passwordHash: adminPasswordHash,
+const createMember = async (user, data) => {
+  const member = await Member.create({
+    user: user._id,
+    email: user.email,
+    monthlyDue: env.monthlyDue,
+    ...data
+  });
+
+  user.member = member._id;
+  await user.save();
+  return member;
+};
+
+const seedDatabase = async () => {
+  if (env.nodeEnv === "production") {
+    throw new Error("Refusing to run the seed script while NODE_ENV=production");
+  }
+
+  await connectDB();
+  log("Seeding local development database...");
+
+  await resetCollections();
+  log("Cleared existing local records");
+
+  const adminUser = await createUser({
+    email: adminEmail,
+    password: adminPassword,
     role: ROLES.ADMIN,
     status: MEMBER_STATUSES.APPROVED,
     lastLoginAt: new Date()
   });
 
-  // Create a member profile for admin (optional)
-  const adminMember = await Member.create({
-    user: adminUser._id,
-    fullName: "Admin User",
-    email: "admin@voiceoflight.local",
+  const adminMember = await createMember(adminUser, {
+    fullName: "Voice of Light Administrator",
     gender: "Prefer not to say",
-    phone: "+234 XXX XXX XXXX",
-    address: "Church Office",
+    phone: "+234 800 000 1000",
+    address: env.organizationLocation || "Church Office",
+    occupation: "Choir Administrator",
     voicePart: "Bass",
     status: MEMBER_STATUSES.APPROVED,
-    choirId: generateChoirId()
+    choirId: generateChoirId(),
+    dateJoinedChoir: new Date("2021-01-10"),
+    idCard: {
+      issuedAt: new Date("2021-01-10"),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      signatureLabel: "Choir Secretary"
+    }
   });
 
-  adminUser.member = adminMember._id;
-  await adminUser.save();
-
-  console.log("✅ Created admin user");
-
-  // Create test member (approved)
-  const memberPasswordHash = await bcrypt.hash("MemberPass123!", env.bcryptRounds);
-  const memberUser = await User.create({
-    email: "member@voiceoflight.local",
-    passwordHash: memberPasswordHash,
+  const approvedUser = await createUser({
+    email: memberEmail,
+    password: memberPassword,
     role: ROLES.MEMBER,
     status: MEMBER_STATUSES.APPROVED,
-    lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+    lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
   });
 
-  const memberProfile = await Member.create({
-    user: memberUser._id,
-    fullName: "John Doe",
-    email: "member@voiceoflight.local",
-    gender: "Male",
+  const approvedMember = await createMember(approvedUser, {
+    fullName: "Chidinma Okafor",
+    gender: "Female",
     phone: "+234 801 234 5678",
-    address: "123 Church Street, Lagos",
-    occupation: "Software Engineer",
-    voicePart: "Tenor",
-    dob: new Date("1990-05-15"),
+    address: "Ikoyi, Lagos",
+    occupation: "Music Teacher",
+    voicePart: "Soprano",
+    dob: new Date("1992-05-15"),
     instrument: "Piano",
     baptized: true,
     confirmed: true,
@@ -92,214 +124,229 @@ const seedDatabase = async () => {
     }
   });
 
-  memberUser.member = memberProfile._id;
-  await memberUser.save();
-
-  console.log("✅ Created test member");
-
-  // Create pending registration
-  const pendingPasswordHash = await bcrypt.hash("PendingPass123!", env.bcryptRounds);
-  const pendingUser = await User.create({
-    email: "pending@voiceoflight.local",
-    passwordHash: pendingPasswordHash,
+  const pendingUser = await createUser({
+    email: process.env.SEED_PENDING_EMAIL || "pending@voiceoflight.org",
+    password: process.env.SEED_PENDING_PASSWORD || "PendingPass123!",
     role: ROLES.MEMBER,
     status: MEMBER_STATUSES.PENDING
   });
 
-  const pendingMember = await Member.create({
-    user: pendingUser._id,
-    fullName: "Jane Smith",
-    email: "pending@voiceoflight.local",
-    gender: "Female",
+  await createMember(pendingUser, {
+    fullName: "Tosin Adeyemi",
+    gender: "Male",
     phone: "+234 802 987 6543",
-    address: "456 Hope Avenue, Lagos",
-    voicePart: "Soprano",
+    address: "Yaba, Lagos",
+    voicePart: "Tenor",
     status: MEMBER_STATUSES.PENDING
   });
 
-  pendingUser.member = pendingMember._id;
-  await pendingUser.save();
-
-  console.log("✅ Created pending member");
-
-  // Create more approved members for demo
-  const voiceParts = VOICE_PARTS;
-  const names = [
-    "Mary Johnson",
-    "Peter Williams",
-    "Grace Brown",
-    "Kwame Asante",
-    "Amina Hassan",
-    "David Green",
-    "Rebecca Taylor",
-    "Michael Charles"
+  const members = [adminMember, approvedMember];
+  const seedMembers = [
+    ["Maryam Bello", "Female", "Alto", "+234 803 111 2201"],
+    ["Peter Ibe", "Male", "Tenor", "+234 803 111 2202"],
+    ["Grace Nwosu", "Female", "Soprano", "+234 803 111 2203"],
+    ["Kwame Mensah", "Male", "Bass", "+234 803 111 2204"],
+    ["Amina Hassan", "Female", "Alto", "+234 803 111 2205"],
+    ["David Green", "Male", "Bass", "+234 803 111 2206"],
+    ["Rebecca Taylor", "Female", "Soprano", "+234 803 111 2207"],
+    ["Michael Charles", "Male", "Tenor", "+234 803 111 2208"]
   ];
 
-  const createdMembers = [memberProfile];
-
-  for (let i = 0; i < names.length; i++) {
-    const passwordHash = await bcrypt.hash("Demo123!@#", env.bcryptRounds);
-    const user = await User.create({
-      email: `${names[i].toLowerCase().replace(/\s+/g, ".")}@voiceoflight.local`,
-      passwordHash,
+  for (let i = 0; i < seedMembers.length; i += 1) {
+    const [fullName, gender, voicePart, phone] = seedMembers[i];
+    const user = await createUser({
+      email: `${fullName.toLowerCase().replace(/\s+/g, ".")}@voiceoflight.org`,
+      password: process.env.SEED_MEMBER_DEFAULT_PASSWORD || "MemberPass123!",
       role: ROLES.MEMBER,
       status: MEMBER_STATUSES.APPROVED
     });
 
-    const member = await Member.create({
-      user: user._id,
-      fullName: names[i],
-      email: user.email,
-      gender: Math.random() > 0.5 ? "Male" : "Female",
-      phone: `+234 ${Math.floor(Math.random() * 9000000000 + 1000000000)}`,
+    const member = await createMember(user, {
+      fullName,
+      gender,
+      phone,
       address: "Lagos, Nigeria",
-      voicePart: voiceParts[i % voiceParts.length],
+      voicePart: VOICE_PARTS.includes(voicePart) ? voicePart : VOICE_PARTS[i % VOICE_PARTS.length],
       status: MEMBER_STATUSES.APPROVED,
       choirId: generateChoirId(),
-      dateJoinedChoir: new Date(Date.now() - Math.random() * 2 * 365 * 24 * 60 * 60 * 1000),
+      dateJoinedChoir: new Date(2022, i % 12, 10),
       idCard: {
-        issuedAt: new Date(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+        issuedAt: new Date(2022, i % 12, 10),
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        signatureLabel: "Choir Secretary"
       }
     });
 
-    user.member = member._id;
-    await user.save();
-    createdMembers.push(member);
+    members.push(member);
   }
 
-  console.log(`✅ Created ${names.length} additional members`);
-
-  // Create events
-  const events = [
+  const now = new Date();
+  const events = await Event.insertMany([
     {
-      title: "Sunday Service",
-      slug: "sunday-service",
+      title: "Sunday Thanksgiving Service",
+      slug: "sunday-thanksgiving-service",
       category: "service",
-      description: "Weekly choir performance during Sunday service",
-      location: "Main Church Hall",
-      startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next week
+      description: "Choir ministration during the Sunday thanksgiving service.",
+      location: "Main Church Auditorium",
+      startsAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 9, 0),
       attendanceCode: "SUN001",
       visibility: "public",
-      status: "published"
+      status: "published",
+      createdBy: adminUser._id
     },
     {
       title: "Choir Rehearsal",
       slug: "choir-rehearsal",
       category: "rehearsal",
-      description: "Weekly practice session",
+      description: "Weekly rehearsal for upcoming services and concerts.",
       location: "Choir Room",
-      startsAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      startsAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 18, 0),
       attendanceCode: "REH001",
       visibility: "members",
-      status: "published"
+      status: "published",
+      createdBy: adminUser._id
     },
     {
-      title: "Annual Concert",
-      slug: "annual-concert",
+      title: "Annual Worship Concert",
+      slug: "annual-worship-concert",
       category: "concert",
-      description: "Voice of Light Chorale Annual Concert",
-      location: "Auditorium",
-      startsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      description: "A public worship concert featuring the full chorale.",
+      location: "City Auditorium",
+      startsAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30, 17, 0),
       visibility: "public",
-      status: "published"
+      status: "published",
+      createdBy: adminUser._id
     }
-  ];
+  ]);
 
-  const createdEvents = await Event.insertMany(events);
-  console.log("✅ Created events");
-
-  // Create payments for the main member
-  const currentDate = new Date();
-  for (let i = 0; i < 6; i++) {
-    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+  for (let i = 0; i < 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const paid = i < 3;
     await Payment.create({
-      member: memberProfile._id,
-      amount: 500,
+      member: approvedMember._id,
+      amount: env.monthlyDue,
       month: date.getMonth() + 1,
       year: date.getFullYear(),
-      status: i < 3 ? "paid" : "pending",
+      status: paid ? "paid" : "pending",
       method: "transfer",
-      receiptNumber: `RCP-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(memberProfile._id).slice(-4)}`,
-      paidAt: i < 3 ? new Date(date.getTime() + 5 * 24 * 60 * 60 * 1000) : null
+      receiptNumber: paid ? generateReceiptNumber() : undefined,
+      paidAt: paid ? new Date(date.getFullYear(), date.getMonth(), 5) : undefined,
+      recordedBy: adminUser._id
     });
   }
 
-  console.log("✅ Created payment records");
-
-  // Create attendance records - distribute across members and events
   const attendanceRecords = [];
-  for (let eventIdx = 0; eventIdx < createdEvents.length; eventIdx++) {
-    for (let memberIdx = 0; memberIdx < createdMembers.length; memberIdx++) {
-      const date = new Date(Date.now() - eventIdx * 7 * 24 * 60 * 60 * 1000);
-      const status = Math.random() > 0.2 ? "present" : Math.random() > 0.5 ? "late" : "absent";
-
+  for (let eventIdx = 0; eventIdx < events.length; eventIdx += 1) {
+    for (let memberIdx = 0; memberIdx < members.length; memberIdx += 1) {
+      const statusCycle = ["present", "present", "present", "late", "excused"];
+      const status = statusCycle[(eventIdx + memberIdx) % statusCycle.length];
       attendanceRecords.push({
-        member: createdMembers[memberIdx]._id,
-        event: createdEvents[eventIdx]._id,
+        member: members[memberIdx]._id,
+        event: events[eventIdx]._id,
         mode: "qr",
         status,
-        checkedInAt: date,
-        minutesLate: status === "late" ? Math.floor(Math.random() * 20) + 5 : 0,
+        checkedInAt: new Date(Date.now() - eventIdx * 7 * 24 * 60 * 60 * 1000),
+        minutesLate: status === "late" ? 12 : 0,
         recordedBy: adminUser._id
       });
     }
   }
 
   await Attendance.insertMany(attendanceRecords);
-  console.log("✅ Created attendance records");
 
-  // Create notifications
   await Notification.insertMany([
     {
-      recipient: memberUser._id,
+      recipient: approvedUser._id,
       audience: "single",
       title: "Welcome to Voice of Light",
-      message: "Welcome to our choir management system. Explore your profile, payment history, and more.",
+      message: "Your member portal is ready. You can manage your profile, attendance, dues, and digital ID card.",
       type: "system"
     },
     {
-      recipient: memberUser._id,
+      recipient: approvedUser._id,
       audience: "single",
-      title: "Payment Reminder",
-      message: "Your monthly dues for August 2024 are due. Please make payment before the end of the month.",
-      type: "payment"
+      title: "Dues Reminder",
+      message: "Your current dues balance is available on the payments page.",
+      type: "payment",
+      actionUrl: "/member/payments"
     }
   ]);
 
-  console.log("✅ Created notifications");
-
-  // Create sample content
-  await ContentItem.insertMany([
+  await OrganizationItem.insertMany([
     {
-      title: "Gallery - Easter Concert 2024",
-      slug: "gallery-easter-concert",
-      type: "gallery-image",
-      description: "Photos from our Easter concert",
-      content: "URL or base64 image data",
-      visibility: "public"
+      type: "executive",
+      name: "Ezinne Umeh",
+      position: "Choir Director",
+      summary: "Coordinates rehearsals, repertoire planning, and performance standards.",
+      order: 1,
+      active: true
     },
     {
-      title: "Latest Choir News",
-      slug: "latest-choir-news",
-      type: "blog",
-      description: "Updates and news from the choir",
-      content: "## Welcome to the Choir Blog\n\nWe're excited to share updates and stories...",
-      visibility: "public"
+      type: "executive",
+      name: "Samuel Adebayo",
+      position: "Choir Secretary",
+      summary: "Maintains member records, attendance documentation, and communications.",
+      order: 2,
+      active: true
+    },
+    {
+      type: "executive",
+      name: "Ifeoma Daniel",
+      position: "Welfare Lead",
+      summary: "Supports member care, follow-up, and welfare coordination.",
+      order: 3,
+      active: true
     }
   ]);
 
-  console.log("✅ Created content items");
+  await ContentItem.insertMany([
+    {
+      title: "Easter Worship Concert Highlights",
+      slug: "easter-worship-concert-highlights",
+      type: "gallery-image",
+      summary: "Selected highlights from the Easter worship concert.",
+      body: "The chorale led the congregation through a reflective Easter worship program.",
+      visibility: "public",
+      published: true,
+      publishedAt: new Date(),
+      createdBy: adminUser._id
+    },
+    {
+      title: "Preparing for a Strong Choir Season",
+      slug: "preparing-for-a-strong-choir-season",
+      type: "blog",
+      summary: "A short note on rehearsal discipline, worship focus, and member preparation.",
+      body: "A strong choir season begins with consistent attendance, personal practice, and a shared commitment to serve with excellence.",
+      visibility: "public",
+      published: true,
+      publishedAt: new Date(),
+      createdBy: adminUser._id
+    },
+    {
+      title: "Rehearsal Schedule Updated",
+      slug: "rehearsal-schedule-updated",
+      type: "announcement",
+      summary: "Weekly rehearsals now begin at 6:00 PM unless otherwise announced.",
+      body: "Members should arrive early enough to settle in and warm up before sectional work begins.",
+      visibility: "members",
+      published: true,
+      publishedAt: new Date(),
+      createdBy: adminUser._id
+    }
+  ]);
 
-  console.log("\n✨ Database seeding completed successfully!");
-  console.log("\n🔐 Demo Login Credentials:");
-  console.log("   Admin: admin@voiceoflight.local / AdminPass123!");
-  console.log("   Member: member@voiceoflight.local / MemberPass123!");
+  log("Seed completed successfully");
+  log("Local admin account:");
+  log(`  ${adminEmail} / ${adminPassword}`);
+  log("Local member account:");
+  log(`  ${memberEmail} / ${memberPassword}`);
 
+  await mongoose.connection.close();
   process.exit(0);
 };
 
-seedDatabase().catch((error) => {
-  console.error("❌ Seeding failed:", error);
+seedDatabase().catch(async (error) => {
+  process.stderr.write(`Seeding failed: ${error.message}\n`);
+  await mongoose.connection.close();
   process.exit(1);
 });

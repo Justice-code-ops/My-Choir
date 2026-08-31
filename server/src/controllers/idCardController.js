@@ -1,7 +1,15 @@
 import { Member } from "../models/Member.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { buildIdCardPayload, buildVerificationUrl } from "../services/idCardService.js";
+import { buildIdCardPayload } from "../services/idCardService.js";
+
+const canManageIdCards = (user) => ["admin", "super-admin"].includes(user.role);
+
+const assertCanAccessMember = (req, member) => {
+  if (canManageIdCards(req.user)) return;
+  if (req.user._id.toString() === member.user.toString()) return;
+  throw new ApiError(403, "You do not have permission to access this ID card");
+};
 
 export const generateIDCard = asyncHandler(async (req, res) => {
   const { memberId } = req.params;
@@ -10,6 +18,8 @@ export const generateIDCard = asyncHandler(async (req, res) => {
   if (!member) {
     throw new ApiError(404, "Member not found");
   }
+
+  assertCanAccessMember(req, member);
 
   if (member.status !== "approved") {
     throw new ApiError(403, "Only approved members can generate ID cards");
@@ -78,19 +88,18 @@ export const downloadIDCard = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Member not found");
   }
 
+  assertCanAccessMember(req, member);
+
   if (member.status !== "approved") {
     throw new ApiError(403, "Only approved members can download ID cards");
   }
 
-  // For now, return the ID card data as JSON
-  // In a production app, this would generate a PDF
   const idCardData = await buildIdCardPayload(member);
 
   res.json({
     success: true,
     message: "ID card ready for download",
-    data: idCardData,
-    // In production, you'd use: res.download(pdfPath) or res.sendFile(pdfPath)
+    data: idCardData
   });
 });
 
