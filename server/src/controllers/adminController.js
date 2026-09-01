@@ -1,11 +1,13 @@
 import { Member } from "../models/Member.js";
+import { User } from "../models/User.js";
 import { Payment } from "../models/Payment.js";
 import { Attendance } from "../models/Attendance.js";
 import { Event } from "../models/Event.js";
 import { AuditLog } from "../models/AuditLog.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { MEMBER_STATUSES } from "../constants/index.js";
+import { MEMBER_STATUSES, ROLES } from "../constants/index.js";
+import { recordAudit } from "../services/auditService.js";
 
 export const getDashboard = asyncHandler(async (req, res) => {
   // Member stats
@@ -191,18 +193,79 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
   });
 });
 
+export const updateUserRole = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { role } = req.body;
+  const choirPost = typeof req.body.choirPost === "string" ? req.body.choirPost.trim() : "";
+
+  if (![ROLES.MEMBER, ROLES.ADMIN].includes(role)) {
+    throw new ApiError(400, "Role must be member or admin");
+  }
+
+  if (req.user._id.toString() === userId) {
+    throw new ApiError(400, "Another admin must change your access level");
+  }
+
+  const user = await User.findById(userId).populate("member");
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (user.role === ROLES.SUPER_ADMIN) {
+    throw new ApiError(403, "Super admin access cannot be changed here");
+  }
+
+  if (role === ROLES.ADMIN && user.status !== MEMBER_STATUSES.APPROVED) {
+    throw new ApiError(400, "Only approved members can be made admins");
+  }
+
+  const previousRole = user.role;
+  user.role = role;
+  await user.save();
+
+  if (user.member) {
+    if (choirPost || role === ROLES.ADMIN) {
+      user.member.choirPost = choirPost || user.member.choirPost || "Choir Administrator";
+      await user.member.save();
+    }
+  }
+
+  await user.populate("member");
+  await recordAudit(req, "USER_ROLE_UPDATED", "User", user._id, {
+    previousRole,
+    nextRole: role,
+    choirPost: user.member?.choirPost
+  });
+
+  res.json({
+    success: true,
+    message: role === ROLES.ADMIN ? "Member is now an admin" : "User role updated",
+    data: {
+      user: {
+        _id: user._id,
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      },
+      member: user.member
+    }
+  });
+});
+
 export const exportMemberList = asyncHandler(async (req, res) => {
   const members = await Member.find({ status: MEMBER_STATUSES.APPROVED })
-    .select("fullName email phone voicePart choirId dateJoinedChoir")
+    .select("fullName email phone voicePart choirPost choirId dateJoinedChoir")
     .sort({ fullName: 1 });
 
   // Format as CSV
-  const headers = ["Full Name", "Email", "Phone", "Voice Part", "Choir ID", "Date Joined"];
+  const headers = ["Full Name", "Email", "Phone", "Voice Part", "Official Post", "Choir ID", "Date Joined"];
   const rows = members.map((m) => [
     m.fullName,
     m.email,
     m.phone,
     m.voicePart,
+    m.choirPost || "Choir Member",
     m.choirId,
     m.dateJoinedChoir ? m.dateJoinedChoir.toISOString().split("T")[0] : ""
   ]);

@@ -36,7 +36,7 @@ export const env = {
   uploadDir: process.env.UPLOAD_DIR || "uploads",
   organizationName: process.env.ORGANIZATION_NAME || "Voice of Light Chorale",
   churchName: process.env.CHURCH_NAME || "Voice of Light Church",
-  organizationEmail: process.env.ORGANIZATION_EMAIL || "info@voiceoflight.local",
+  organizationEmail: process.env.ORGANIZATION_EMAIL || "voxluminachorale@gmail.com",
   organizationPhone: process.env.ORGANIZATION_PHONE || "",
   organizationLocation: process.env.ORGANIZATION_LOCATION || "",
   cloudinary: {
@@ -46,9 +46,11 @@ export const env = {
   },
   smtp: {
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
+    port: toNumber(process.env.SMTP_PORT, 587),
+    secure: process.env.SMTP_SECURE === "true",
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM || process.env.ORGANIZATION_EMAIL || "voxluminachorale@gmail.com"
   },
   payments: {
     provider: process.env.PAYMENT_PROVIDER,

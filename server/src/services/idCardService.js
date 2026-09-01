@@ -36,6 +36,9 @@ export const buildIdCardPayload = async (member) => {
     margin: 1,
     width: 320
   });
+  const accountRole = typeof member.user === "object" ? member.user?.role : undefined;
+  const fallbackPost = ["admin", "super-admin"].includes(accountRole) ? "Choir Administrator" : "Choir Member";
+  const officialPost = member.choirPost || fallbackPost;
 
   return {
     choirName: env.organizationName,
@@ -45,7 +48,9 @@ export const buildIdCardPayload = async (member) => {
       fullName: member.fullName,
       membershipId: member.choirId,
       choirId: member.choirId,
-      role: member.role || "Choir Member",
+      role: officialPost,
+      choirPost: officialPost,
+      accountRole: accountRole || "member",
       voicePart: member.voicePart,
       phone: member.phone,
       email: member.email,

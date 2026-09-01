@@ -95,14 +95,16 @@ export const getBlog = asyncHandler(async (req, res) => {
 
   const total = await ContentItem.countDocuments({
     type: "blog",
-    visibility: "public"
+    visibility: "public",
+    published: true
   });
 
   const posts = await ContentItem.find({
     type: "blog",
-    visibility: "public"
+    visibility: "public",
+    published: true
   })
-    .sort({ createdAt: -1 })
+    .sort({ publishedAt: -1, createdAt: -1 })
     .skip(skip)
     .limit(limit);
 
@@ -124,7 +126,8 @@ export const getBlogPost = asyncHandler(async (req, res) => {
   const post = await ContentItem.findOne({
     type: "blog",
     slug,
-    visibility: "public"
+    visibility: "public",
+    published: true
   });
 
   if (!post) {
@@ -142,9 +145,10 @@ export const getAnnouncements = asyncHandler(async (req, res) => {
 
   const announcements = await ContentItem.find({
     type: "announcement",
-    visibility: { $in: ["public", "members"] }
+    visibility: { $in: ["public", "members"] },
+    published: true
   })
-    .sort({ createdAt: -1 })
+    .sort({ publishedAt: -1, createdAt: -1 })
     .limit(parseInt(limit));
 
   res.json({

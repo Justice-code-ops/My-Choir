@@ -77,7 +77,7 @@ export const approveMember = asyncHandler(async (req, res) => {
     title: "Registration Approved",
     message: `Congratulations! Your registration has been approved. Your choir ID is ${member.choirId}. You can now log in to your account.`,
     type: "approval",
-    actionUrl: "/login"
+    actionUrl: "/auth/login"
   });
 
   // Record audit
@@ -177,7 +177,7 @@ export const requestCorrection = asyncHandler(async (req, res) => {
     title: "Registration Requires Correction",
     message: `Your registration requires the following corrections:\n${requiredCorrections}\n\nPlease update your profile and resubmit for approval.`,
     type: "approval",
-    actionUrl: "/member/profile/edit"
+    actionUrl: "/member/profile"
   });
 
   // Record audit

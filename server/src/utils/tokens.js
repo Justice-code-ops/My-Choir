@@ -22,8 +22,9 @@ export const cookieOptions = () => ({
 
 export const generatePasswordResetToken = () => crypto.randomBytes(32).toString("hex");
 
+export const hashPasswordResetToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
 export const verifyPasswordReset = (token) => {
-  // Token is simple hash, no verification needed beyond checking in DB
   return !!token && token.length === 64;
 };
-

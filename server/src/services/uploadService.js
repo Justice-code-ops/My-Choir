@@ -1,8 +1,13 @@
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 import { cloudinary, isCloudinaryConfigured } from "../config/cloudinary.js";
 import { env } from "../config/env.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const serverRoot = path.resolve(__dirname, "..", "..");
 
 const extensionFromFile = (file) => {
   const fromName = path.extname(file.originalname || "");
@@ -35,7 +40,7 @@ const uploadToCloudinary = (file, folder) =>
   });
 
 const uploadLocally = async (file, folder) => {
-  const uploadsPath = path.resolve(env.uploadDir, folder);
+  const uploadsPath = path.resolve(serverRoot, env.uploadDir, folder);
   await fs.mkdir(uploadsPath, { recursive: true });
   const safeName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${extensionFromFile(file)}`;
   const target = path.join(uploadsPath, safeName);
@@ -56,4 +61,3 @@ export const storeFile = async (file, folder = "library") => {
 };
 
 export const storeProfilePicture = (file) => storeFile(file, "profiles");
-

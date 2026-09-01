@@ -21,6 +21,7 @@ export const serializeUser = (user) => ({
   phone: user.member?.phone,
   gender: user.member?.gender,
   voicePart: user.member?.voicePart,
+  choirPost: user.member?.choirPost,
   choirId: user.member?.choirId,
   createdAt: user.member?.createdAt || user.createdAt
 });

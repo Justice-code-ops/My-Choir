@@ -3,12 +3,17 @@ import { User } from "../models/User.js";
 import { Notification } from "../models/Notification.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { signToken, generatePasswordResetToken } from "../utils/tokens.js";
+import { signToken, generatePasswordResetToken, hashPasswordResetToken } from "../utils/tokens.js";
 import * as authService from "../services/authService.js";
 import { recordAudit } from "../services/auditService.js";
 import { env } from "../config/env.js";
+import { isEmailConfigured, sendPasswordResetEmail } from "../services/emailService.js";
 
 export const register = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new ApiError(400, "Profile picture is required for registration");
+  }
+
   const { user, member } = await authService.registerMember({
     body: req.body,
     file: req.file
@@ -106,10 +111,14 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
+  const canSendResetEmail = isEmailConfigured();
+
+  if (env.nodeEnv === "production" && !canSendResetEmail) {
+    throw new ApiError(503, "Password reset email is not configured");
+  }
 
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user) {
-    // Don't reveal if email exists
     return res.json({
       success: true,
       message: "If an account exists with that email, you will receive a password reset link."
@@ -117,17 +126,25 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   }
 
   const resetToken = generatePasswordResetToken();
-  user.passwordResetToken = resetToken;
+  user.passwordResetToken = hashPasswordResetToken(resetToken);
   user.passwordResetExpiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
   await user.save();
 
   const resetUrl = `${env.clientUrl}/auth/reset-password?token=${resetToken}`;
+
+  if (canSendResetEmail) {
+    await sendPasswordResetEmail({
+      to: user.email,
+      resetUrl
+    });
+  }
+
   const response = {
     success: true,
     message: "If an account exists with that email, you will receive a password reset link."
   };
 
-  if (env.nodeEnv !== "production") {
+  if (env.nodeEnv !== "production" && !canSendResetEmail) {
     response.resetUrl = resetUrl;
   }
 
@@ -142,7 +159,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({
-    passwordResetToken: token,
+    passwordResetToken: hashPasswordResetToken(token),
     passwordResetExpiresAt: { $gt: new Date() }
   });
 

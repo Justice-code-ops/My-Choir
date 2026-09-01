@@ -121,6 +121,10 @@ export const updateMember = asyncHandler(async (req, res) => {
     "emergencyNotes",
     "dateJoinedChurch"
   ];
+  const adminOnlyFields = ["choirPost"];
+  const editableFields = canManageMembers(req.user)
+    ? [...allowedFields, ...adminOnlyFields]
+    : allowedFields;
 
   const requiredStringFields = ["fullName", "gender", "phone", "address", "voicePart"];
 
@@ -138,7 +142,7 @@ export const updateMember = asyncHandler(async (req, res) => {
     };
   }
 
-  allowedFields.forEach((key) => {
+  editableFields.forEach((key) => {
     if (!Object.prototype.hasOwnProperty.call(req.body, key)) return;
 
     if (key === "nextOfKin") {
@@ -168,7 +172,7 @@ export const updateMember = asyncHandler(async (req, res) => {
   // Record audit
   await recordAudit(req, "MEMBER_UPDATED", "Member", member._id, {
     fields: [
-      ...Object.keys(req.body).filter((k) => allowedFields.includes(k) || k.startsWith("nextOfKin")),
+      ...Object.keys(req.body).filter((k) => editableFields.includes(k) || k.startsWith("nextOfKin")),
       ...(req.file ? ["profilePicture"] : [])
     ]
   });

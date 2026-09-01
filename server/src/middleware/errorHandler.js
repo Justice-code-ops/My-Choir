@@ -7,8 +7,10 @@ export const notFound = (req, _res, next) => {
 export const errorHandler = (err, _req, res, _next) => {
   const statusCode = err.statusCode || 500;
   const isProduction = process.env.NODE_ENV === "production";
+  const isOperational = err instanceof ApiError || err.isOperational;
+  const shouldExposeStack = !isProduction && (!isOperational || statusCode >= 500);
 
-  if (!isProduction) {
+  if (shouldExposeStack) {
     console.error(err);
   }
 
@@ -16,7 +18,6 @@ export const errorHandler = (err, _req, res, _next) => {
     success: false,
     message: err.message || "Server error",
     details: err.details || undefined,
-    stack: isProduction ? undefined : err.stack
+    stack: shouldExposeStack ? err.stack : undefined
   });
 };
-

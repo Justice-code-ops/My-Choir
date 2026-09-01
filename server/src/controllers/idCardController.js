@@ -7,14 +7,15 @@ const canManageIdCards = (user) => ["admin", "super-admin"].includes(user.role);
 
 const assertCanAccessMember = (req, member) => {
   if (canManageIdCards(req.user)) return;
-  if (req.user._id.toString() === member.user.toString()) return;
+  const memberUserId = member.user?._id || member.user;
+  if (req.user._id.toString() === memberUserId?.toString()) return;
   throw new ApiError(403, "You do not have permission to access this ID card");
 };
 
 export const generateIDCard = asyncHandler(async (req, res) => {
   const { memberId } = req.params;
 
-  const member = await Member.findById(memberId);
+  const member = await Member.findById(memberId).populate("user", "email role status");
   if (!member) {
     throw new ApiError(404, "Member not found");
   }
@@ -37,7 +38,7 @@ export const generateIDCard = asyncHandler(async (req, res) => {
 export const verifyIDCard = asyncHandler(async (req, res) => {
   const { choirId } = req.params;
 
-  const member = await Member.findOne({ choirId });
+  const member = await Member.findOne({ choirId }).populate("user", "email role status");
   if (!member) {
     throw new ApiError(404, "ID not found");
   }
@@ -58,6 +59,7 @@ export const verifyIDCard = asyncHandler(async (req, res) => {
           choirId: member.choirId,
           photo: member.profilePicture?.url || null,
           voicePart: member.voicePart,
+          choirPost: member.choirPost || "Choir Member",
           status: "expired"
         }
       });
@@ -73,6 +75,7 @@ export const verifyIDCard = asyncHandler(async (req, res) => {
       choirId: member.choirId,
       photo: member.profilePicture?.url || null,
       voicePart: member.voicePart,
+      choirPost: member.choirPost || (["admin", "super-admin"].includes(member.user?.role) ? "Choir Administrator" : "Choir Member"),
       status: member.status,
       dateJoined: member.dateJoinedChoir,
       expiryDate: member.idCard?.expiresAt || null
@@ -83,7 +86,7 @@ export const verifyIDCard = asyncHandler(async (req, res) => {
 export const downloadIDCard = asyncHandler(async (req, res) => {
   const { memberId } = req.params;
 
-  const member = await Member.findById(memberId);
+  const member = await Member.findById(memberId).populate("user", "email role status");
   if (!member) {
     throw new ApiError(404, "Member not found");
   }
@@ -104,7 +107,7 @@ export const downloadIDCard = asyncHandler(async (req, res) => {
 });
 
 export const getMemberIDCard = asyncHandler(async (req, res) => {
-  const member = await Member.findOne({ user: req.user._id });
+  const member = await Member.findOne({ user: req.user._id }).populate("user", "email role status");
   if (!member) {
     throw new ApiError(404, "Member profile not found");
   }

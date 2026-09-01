@@ -40,6 +40,10 @@ const memberSchema = new mongoose.Schema(
       trim: true
     },
     occupation: String,
+    choirPost: {
+      type: String,
+      trim: true
+    },
     nextOfKin: {
       name: String,
       phone: String,
@@ -111,4 +115,3 @@ const memberSchema = new mongoose.Schema(
 memberSchema.index({ fullName: "text", email: "text", phone: "text", choirId: "text" });
 
 export const Member = mongoose.model("Member", memberSchema);
-
