@@ -57,6 +57,10 @@ export default function VerifyIDCard() {
               <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.choirId}</p>
             </div>
             <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Official Post</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.choirPost || "Choir Member"}</p>
+            </div>
+            <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Voice Part</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.voicePart}</p>
             </div>

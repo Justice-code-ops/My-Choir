@@ -128,7 +128,15 @@ export const adminAPI = {
   getMemberStats: () => api.get("/admin/members/stats"),
   getFinancialStats: (year) => api.get("/admin/financial-stats", { params: { year } }),
   getAuditLogs: (params) => api.get("/admin/audit-logs", { params }),
+  updateUserRole: (userId, data) => api.patch(`/admin/users/${userId}/role`, data),
   exportMembers: () => api.get("/admin/export/members", { responseType: "blob" })
+};
+
+export const adminContentAPI = {
+  listBlogPosts: (params) => api.get("/admin/blog", { params }),
+  createBlogPost: (data) => api.post("/admin/blog", data),
+  updateBlogPost: (id, data) => api.put(`/admin/blog/${id}`, data),
+  deleteBlogPost: (id) => api.delete(`/admin/blog/${id}`)
 };
 
 // Notification endpoints

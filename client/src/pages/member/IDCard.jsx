@@ -41,6 +41,8 @@ const buildCardSvg = (card, embeddedPhotoUrl) => {
   const membershipId = member.membershipId || member.choirId || "Pending";
   const photoUrl = embeddedPhotoUrl ?? resolveAssetUrl(member.photoUrl);
   const isActive = Boolean(member.isActive);
+  const officialPost = member.choirPost || member.role || "Choir Member";
+  const cardTitle = ["admin", "super-admin"].includes(member.accountRole) ? "OFFICIAL ADMIN ID" : "OFFICIAL CHOIR ID";
   const statusFill = isActive ? "#dcfce7" : "#fee2e2";
   const statusText = isActive ? "#166534" : "#991b1b";
 
@@ -59,7 +61,7 @@ const buildCardSvg = (card, embeddedPhotoUrl) => {
   <rect x="418" y="24" width="176" height="24" rx="12" fill="#e2e8f0" opacity="0.8"/>
   <text x="54" y="70" fill="#ffffff" font-family="Arial, sans-serif" font-size="33" font-weight="700">${escapeXml(compactText(card.choirName, 34))}</text>
   <text x="54" y="112" fill="#bfdbfe" font-family="Arial, sans-serif" font-size="20">${escapeXml(compactText(card.churchName, 44))}</text>
-  <text x="54" y="158" fill="#ffffff" font-family="Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="3">OFFICIAL MEMBER ID</text>
+  <text x="54" y="158" fill="#ffffff" font-family="Arial, sans-serif" font-size="21" font-weight="700">${escapeXml(cardTitle)}</text>
   <rect x="770" y="54" width="178" height="42" rx="21" fill="${statusFill}"/>
   <text x="859" y="82" text-anchor="middle" fill="${statusText}" font-family="Arial, sans-serif" font-size="18" font-weight="700">${isActive ? "ACTIVE" : "INACTIVE"}</text>
 
@@ -72,7 +74,7 @@ const buildCardSvg = (card, embeddedPhotoUrl) => {
   <text x="336" y="270" fill="#0f172a" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(compactText(member.fullName, 30))}</text>
   <rect x="336" y="294" width="316" height="54" rx="14" fill="#dbeafe"/>
   <text x="356" y="329" fill="#1d4ed8" font-family="Arial, sans-serif" font-size="24" font-weight="800">${escapeXml(membershipId)}</text>
-  <text x="336" y="386" fill="#334155" font-family="Arial, sans-serif" font-size="22">Role: ${escapeXml(compactText(member.role || "Choir Member", 25))}</text>
+  <text x="336" y="386" fill="#334155" font-family="Arial, sans-serif" font-size="22">Post: ${escapeXml(compactText(officialPost, 25))}</text>
   <text x="336" y="424" fill="#334155" font-family="Arial, sans-serif" font-size="22">Voice: ${escapeXml(member.voicePart || "Not set")}</text>
   <text x="336" y="462" fill="#334155" font-family="Arial, sans-serif" font-size="22">Phone: ${escapeXml(member.phone || "Not provided")}</text>
   <text x="336" y="500" fill="#334155" font-family="Arial, sans-serif" font-size="22">Email: ${escapeXml(compactText(member.email || "Not provided", 32))}</text>
@@ -228,6 +230,10 @@ export default function MemberIDCard() {
             <div>
               <dt className="text-gray-500 dark:text-gray-400">Membership ID</dt>
               <dd className="text-gray-900 dark:text-white font-semibold">{member.membershipId || member.choirId}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 dark:text-gray-400">Official Post</dt>
+              <dd className="text-gray-900 dark:text-white font-semibold">{member.choirPost || member.role || "Choir Member"}</dd>
             </div>
             <div>
               <dt className="text-gray-500 dark:text-gray-400">Status</dt>

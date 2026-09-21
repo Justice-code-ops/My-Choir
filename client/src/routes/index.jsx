@@ -36,6 +36,7 @@ import AdminMembers from "../pages/admin/Members";
 import AdminApprovals from "../pages/admin/Approvals";
 import AdminPayments from "../pages/admin/Payments";
 import AdminAttendance from "../pages/admin/Attendance";
+import AdminBlog from "../pages/admin/Blog";
 
 // Error pages
 import NotFound from "../pages/errors/NotFound";
@@ -84,7 +85,9 @@ export const router = createBrowserRouter([
       { path: "members", element: <AdminMembers /> },
       { path: "approvals", element: <AdminApprovals /> },
       { path: "payments", element: <AdminPayments /> },
-      { path: "attendance", element: <AdminAttendance /> }
+      { path: "attendance", element: <AdminAttendance /> },
+      { path: "id-card", element: <MemberIDCard /> },
+      { path: "blog", element: <AdminBlog /> }
     ]
   },
   {

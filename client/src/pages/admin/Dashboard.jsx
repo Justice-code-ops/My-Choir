@@ -94,6 +94,9 @@ export default function AdminDashboard() {
             <Link to="/admin/attendance" className="block p-3 bg-indigo-50 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-800">
               Attendance Reports
             </Link>
+            <Link to="/admin/blog" className="block p-3 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+              Blog Publishing
+            </Link>
           </div>
         </div>
 

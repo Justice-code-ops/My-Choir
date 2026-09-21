@@ -5,6 +5,8 @@ import {
   FiCheckCircle,
   FiDollarSign,
   FiCalendar,
+  FiFileText,
+  FiCreditCard,
   FiChevronDown
 } from "react-icons/fi";
 import { useState } from "react";
@@ -18,7 +20,9 @@ export default function Sidebar() {
     { icon: FiUsers, label: "Members", path: "/admin/members" },
     { icon: FiCheckCircle, label: "Approvals", path: "/admin/approvals" },
     { icon: FiDollarSign, label: "Payments", path: "/admin/payments" },
-    { icon: FiCalendar, label: "Attendance", path: "/admin/attendance" }
+    { icon: FiCalendar, label: "Attendance", path: "/admin/attendance" },
+    { icon: FiCreditCard, label: "My ID", path: "/admin/id-card" },
+    { icon: FiFileText, label: "Blog", path: "/admin/blog" }
   ];
 
   const isActive = (path) => location.pathname === path;

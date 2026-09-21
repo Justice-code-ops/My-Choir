@@ -10,6 +10,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [profilePicture, setProfilePicture] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   const { user } = useAuthStore();
   const password = watch("password");
@@ -18,10 +19,23 @@ export default function Register() {
     if (user) navigate("/member/dashboard");
   }, [user, navigate]);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   const onSubmit = async (data) => {
     setLoading(true);
     setError("");
     setSuccess("");
+
+    if (!profilePicture) {
+      setError("Please upload a profile picture for your ID card.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const payload = {
         ...data,
@@ -41,6 +55,12 @@ export default function Register() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProfilePictureChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    setProfilePicture(file);
+    setPreviewUrl(file ? URL.createObjectURL(file) : "");
   };
 
   return (
@@ -63,17 +83,29 @@ export default function Register() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Profile Picture */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Profile Picture
+            Profile Picture for ID Card
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setProfilePicture(e.target.files?.[0])}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-700"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-[96px_minmax(0,1fr)] gap-4 items-center">
+            <div className="w-24 h-24 rounded-lg bg-gray-100 dark:bg-dark-700 border border-gray-300 dark:border-dark-600 overflow-hidden flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+              {previewUrl ? (
+                <img src={previewUrl} alt="Profile preview" className="w-full h-full object-cover" />
+              ) : (
+                "Photo"
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              required
+              onChange={handleProfilePictureChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-dark-600 rounded-lg dark:bg-dark-700 dark:text-white"
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            This photo will be used immediately on your digital ID card after approval.
+          </p>
         </div>
 
         {/* Personal Information */}
